@@ -78,7 +78,7 @@ combineddf = pd.concat([train_df, test_df], axis=0, ignore_index=True)
 print(healthy_df.shape, arrhythmia_df.shape, prematureV_df.shape, prematureA_df.shape, other_df.shape)
 # shapes: 2919,141 1767,141 96, 141 194,141 24,141
 
-# reshaping for further use, after it will be a 2D matrix. Take only 583 from 2919 heartbeats to maintain 20%-80% Train-Test-Split
+# reshaping for further use, after it will be a 2D matrix.
 healthy = healthy_df.iloc[:, 1:].values
 
 model = Sequential()
@@ -87,35 +87,35 @@ model = Sequential()
 scaler = MinMaxScaler(feature_range=(-1, 1))
 healthy_norm = scaler.fit_transform(healthy)
 
+time_steps = 35
+features = 4
 # Reshape to fit them into the auto encoder. Second value is the timestep
-healthy_reshape = healthy.reshape((healthy.shape[0], 140, 1))
+healthy_reshape = healthy_norm.reshape((healthy.shape[0], time_steps, features))
 
-#plot_df(train_df, 1, 'Arrhythmia Heartbeat Over Time')
-#plot_eachtype([healthy_df, arrhythmia_df, prematureV_df, prematureA_df, other_df])
 
-def createModel():
-    epochs = 100
-    batch_size = 32
+# plot_df(train_df, 1, 'Arrhythmia Heartbeat Over Time')
+# plot_eachtype([healthy_df, arrhythmia_df, prematureV_df, prematureA_df, other_df])
 
+def createModel(epochs, batch_size, time_steps, features):
     # Encoder
-    model.add(LSTM(64, activation='relu', input_shape=(140, 1), return_sequences=True))
-    model.add(LSTM(32, activation='relu', return_sequences=False))
+    model.add(LSTM(64, activation='relu', input_shape=(time_steps, features), return_sequences=True))
+    model.add(LSTM(32, activation='relu', return_sequences=True))
 
     # Bottleneck
-    model.add(Dense(10, activation='relu'))  # Smallest representation layer (bottleneck)
+    model.add(LSTM(10, activation='relu', return_sequences=True))  # Smallest representation layer (bottleneck)
 
     # Decoder
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(64, activation='relu'))
+    model.add(LSTM(32, activation='relu', return_sequences=True))
+    model.add(LSTM(64, activation='relu', return_sequences=False))
     model.add(Dense(140, activation='sigmoid'))  # Output layer matches the input feature size for each timestep
 
     # 5. Compile the model
     model.compile(optimizer='adam', loss='mean_squared_error')
 
-    model.fit(healthy_reshape, healthy_reshape, epochs, batch_size, validation_split=0.1)
+    history = model.fit(healthy_reshape, healthy_reshape, batch_size, epochs, validation_split=0.1)
+    return history
 
-
-def plotReconstructed(num_heartbeat):
+def plotReconstructed(num_heartbeat, epochs, batch_size, history):
     # Select a single heartbeat from the input data
     input_heartbeat = healthy_reshape[num_heartbeat]  # For example, the fifth heartbeat
 
@@ -124,16 +124,22 @@ def plotReconstructed(num_heartbeat):
 
     # Plotting both the input and reconstructed heartbeat
     plt.figure(figsize=(10, 5))
-    plt.plot(input_heartbeat.reshape(-1), label="Input Heartbeat", linestyle='--', color='blue')
+    plt.plot(input_heartbeat.reshape(-1), label=f"Input Heartbeat {num_heartbeat}", linestyle='--', color='blue')
     plt.plot(reconstructed_heartbeat, label="Reconstructed Heartbeat", linestyle='-', color='red')
-    plt.title("Comparison of Input and Reconstructed Heartbeat")
+    plt.title(f"Comparison of Input and Reconstructed Heartbeat using Epochs = {epochs}, and Batch-Size = {batch_size}."
+              f" Final loss is: {history.history['loss'][-1]}")
     plt.xlabel("Timestep")
     plt.ylabel("Pulse Value")
     plt.legend()
     plt.show()
 
-createModel()
 
-plotReconstructed(5)
+epochs = 5
+batch_size = 2
+heartbeat_to_plot = 5
 
-plotNumGraph(healthy_norm, 5, "scaled healthy heartbeat num 5")
+history = createModel(epochs, batch_size, time_steps, features)
+
+plotReconstructed(heartbeat_to_plot, epochs, batch_size, history)
+
+plotNumGraph(healthy_norm, heartbeat_to_plot, "scaled healthy heartbeat num 5")
