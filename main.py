@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM
+import keras as ks
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
 import numpy as np
 
 
@@ -84,11 +85,11 @@ healthy = healthy_df.iloc[:, 1:].values
 model = Sequential()
 
 # scaling values to be between 0 and 1
-scaler = MinMaxScaler(feature_range=(-1, 1))
+scaler = MinMaxScaler(feature_range=(0, 1))
 healthy_norm = scaler.fit_transform(healthy)
 
-time_steps = 35
-features = 4
+time_steps = 140
+features = 1
 # Reshape to fit them into the auto encoder. Second value is the timestep
 healthy_reshape = healthy_norm.reshape((healthy.shape[0], time_steps, features))
 
@@ -98,15 +99,15 @@ healthy_reshape = healthy_norm.reshape((healthy.shape[0], time_steps, features))
 
 def createModel(epochs, batch_size, time_steps, features):
     # Encoder
-    model.add(LSTM(64, activation='relu', input_shape=(time_steps, features), return_sequences=True))
-    model.add(LSTM(32, activation='relu', return_sequences=True))
+    model.add(Dense(64, activation='relu', input_shape=(time_steps, features)))
+    model.add(Dense(32, activation='relu'))
 
     # Bottleneck
-    model.add(LSTM(10, activation='relu', return_sequences=True))  # Smallest representation layer (bottleneck)
+    model.add(Dense(10, activation='relu'))  # Smallest representation layer (bottleneck)
 
     # Decoder
-    model.add(LSTM(32, activation='relu', return_sequences=True))
-    model.add(LSTM(64, activation='relu', return_sequences=False))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(Dense(140, activation='sigmoid'))  # Output layer matches the input feature size for each timestep
 
     # 5. Compile the model
