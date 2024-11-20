@@ -38,6 +38,17 @@ def plot_df(dataframe, num, title):
     plt.show()
 
 
+def plotNumGraph(data_array, num, title):
+    plt.figure(figsize=(12, 6))
+    plt.plot(range(len(data_array[1])), data_array[5], label=f'Heartbeat {num + 1}')
+    plt.title(title)
+    plt.xlabel('Time Index')
+    plt.ylabel('Pulse Value')
+    plt.legend(loc='upper right', fontsize='small')
+    plt.grid(True)
+    plt.show()
+
+
 def plot_eachtype(dataframes):
     labels = ["Healthy Heartbeat", "Arrhythmia Heartbeat", "Premature Ventricular", "Premature Artrial", "Others"]
 
@@ -68,13 +79,13 @@ print(healthy_df.shape, arrhythmia_df.shape, prematureV_df.shape, prematureA_df.
 # shapes: 2919,141 1767,141 96, 141 194,141 24,141
 
 # reshaping for further use, after it will be a 2D matrix. Take only 583 from 2919 heartbeats to maintain 20%-80% Train-Test-Split
-healthy = healthy_df.iloc[:583, 1:].values
+healthy = healthy_df.iloc[:, 1:].values
 
 model = Sequential()
 
 # scaling values to be between 0 and 1
-scaler = MinMaxScaler()
-#healthy_norm = scaler.fit_transform(healthy)
+scaler = MinMaxScaler(feature_range=(-1, 1))
+healthy_norm = scaler.fit_transform(healthy)
 
 # Reshape to fit them into the auto encoder. Second value is the timestep
 healthy_reshape = healthy.reshape((healthy.shape[0], 140, 1))
@@ -104,9 +115,9 @@ def createModel():
     model.fit(healthy_reshape, healthy_reshape, epochs, batch_size, validation_split=0.1)
 
 
-def plotReconstructed():
+def plotReconstructed(num_heartbeat):
     # Select a single heartbeat from the input data
-    input_heartbeat = healthy_reshape[0]  # For example, the first heartbeat
+    input_heartbeat = healthy_reshape[num_heartbeat]  # For example, the fifth heartbeat
 
     # Get the reconstructed heartbeat from the model
     reconstructed_heartbeat = model.predict(np.expand_dims(input_heartbeat, axis=0)).reshape(-1)
@@ -123,4 +134,6 @@ def plotReconstructed():
 
 createModel()
 
-plotReconstructed()
+plotReconstructed(5)
+
+plotNumGraph(healthy_norm, 5, "scaled healthy heartbeat num 5")
