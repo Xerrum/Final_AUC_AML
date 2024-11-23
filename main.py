@@ -115,26 +115,26 @@ def createModel(epochs, batch_size, time_steps, features, model):
     :return: History which stores the training loss for each epoch as well as the validation loss.
     """
     # Encoder
-    model.add(LSTM(64, activation='relu', input_shape=(time_steps, features), return_sequences=True))
-    #    model.add(LSTM(64, activation='relu', return_sequences=True))
-    model.add(LSTM(32, activation='relu', return_sequences=True))
+    model.add(LSTM(64, activation='tanh', input_shape=(time_steps, features), return_sequences=True))
+    #    model.add(LSTM(64, activation='tanh', return_sequences=True))
+    model.add(LSTM(32, activation='tanh', return_sequences=True))
 
     # Bottleneck
-    model.add(LSTM(10, activation='relu', return_sequences=True))  # Smallest representation layer (bottleneck)
+    model.add(LSTM(10, activation='tanh', return_sequences=True))  # Smallest representation layer (bottleneck)
 
     # Decoder
-    model.add(LSTM(32, activation='relu', return_sequences=True))
-    model.add(LSTM(64, activation='relu', return_sequences=False))
-    model.add(Dense(140, activation='sigmoid'))  # Output layer matches the input feature size for each timestep
+    model.add(LSTM(32, activation='tanh', return_sequences=True))
+    model.add(LSTM(64, activation='tanh', return_sequences=False))
+    model.add(Dense(140, activation='linear'))  # Output layer supports negative values
 
-    # 5. Compile the model
-    model.compile(optimizer='adam', loss='mean_squared_error')
+    # Compile the model
+    model.compile(optimizer='adam', loss='mse')
 
     history = model.fit(healthy_reshape, healthy_reshape, batch_size, epochs, validation_split=0.1)
     return history
 
 
-def plotReconstructed(num_heartbeat, epochs, batch_size, history, model):
+def plotReconstructed(num_heartbeat, epochs, batch_size, history, model, modelnumber):
     """
     Uses the created model to reconstruct a heartbeat.
 
@@ -153,7 +153,7 @@ def plotReconstructed(num_heartbeat, epochs, batch_size, history, model):
     # Plotting both the input and reconstructed heartbeat
     plt.figure(figsize=(10, 5))
     plt.plot(input_heartbeat.reshape(-1), label=f"Input Heartbeat {num_heartbeat}", linestyle='--', color='blue')
-    plt.plot(reconstructed_heartbeat, label="Reconstructed Heartbeat", linestyle='-', color='red')
+    plt.plot(reconstructed_heartbeat, label=f"Reconstructed Heartbeat Model {modelnumber}", linestyle='-', color='red')
     plt.title(
         f"Comparison of Input and Reconstructed Heartbeat. Final loss is: {round(history.history['loss'][-1], 5)} \n"
         f"Epochs = {epochs}, Batch Size = {batch_size}")
@@ -230,14 +230,14 @@ combineddf = pd.concat([train_df, test_df], axis=0, ignore_index=True)
 healthy = healthy_df.iloc[:, 1:].values
 
 # scaling values to be between 0 and 1
-scaler = MinMaxScaler(feature_range=(0, 1))
+scaler = MinMaxScaler(feature_range=(-1, 1))
 healthy_norm = scaler.fit_transform(healthy)
 
 time_steps = 140
 features = 1
 
 # Reshape to fit them into the auto encoder. Second value is the timestep
-healthy_reshape = healthy_norm.reshape((healthy.shape[0], time_steps, features))
+healthy_reshape = healthy.reshape((healthy.shape[0], time_steps, features))
 
 epochs = 5
 batch_size = 70
@@ -252,4 +252,4 @@ model.save(f'model_number{modelnumber}.h5')
 document_model(modelnumber, model, epochs, batch_size, history)
 increase_modelnumber()
 
-plotReconstructed(heartbeat_to_plot, epochs, batch_size, history, model)
+plotReconstructed(heartbeat_to_plot, epochs, batch_size, history, model, modelnumber)
