@@ -241,7 +241,7 @@ healthy_reshape = healthy_norm.reshape((healthy.shape[0], time_steps, features))
 
 epochs = 5
 batch_size = 70
-heartbeat_to_plot = 5
+heartbeat_to_plot = 6
 
 model = Sequential()
 
