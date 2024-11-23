@@ -124,8 +124,8 @@ def createModel(epochs, batch_size, time_steps, features, model):
 
     # Decoder
     model.add(LSTM(32, activation='tanh', return_sequences=True))
-    model.add(LSTM(64, activation='tanh', return_sequences=False))
-    model.add(Dense(140, activation='linear'))  # Output layer supports negative values
+    model.add(LSTM(64, activation='tanh', return_sequences=True))
+    model.add(LSTM(140, activation='linear'))  # Output layer supports negative values
 
     # Compile the model
     model.compile(optimizer='adam', loss='mse')
@@ -237,7 +237,7 @@ time_steps = 140
 features = 1
 
 # Reshape to fit them into the auto encoder. Second value is the timestep
-healthy_reshape = healthy.reshape((healthy.shape[0], time_steps, features))
+healthy_reshape = healthy_norm.reshape((healthy_norm.shape[0], time_steps, features))
 
 epochs = 5
 batch_size = 70
