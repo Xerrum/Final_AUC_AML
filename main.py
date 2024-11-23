@@ -115,7 +115,7 @@ def createModel(epochs, batch_size, time_steps, features, model, train_data):
     :return: History which stores the training loss for each epoch as well as the validation loss.
     """
     # Encoder
-    model.add(LSTM(64, activation='tanh', input_shape=(1, time_steps, features), return_sequences=True))
+    model.add(LSTM(64, activation='tanh', input_shape=(time_steps, features), return_sequences=True))
     #    model.add(LSTM(64, activation='tanh', return_sequences=True))
     model.add(LSTM(32, activation='tanh', return_sequences=True))
 
@@ -125,7 +125,7 @@ def createModel(epochs, batch_size, time_steps, features, model, train_data):
     # Decoder
     model.add(LSTM(32, activation='tanh', return_sequences=True))
     model.add(LSTM(64, activation='tanh', return_sequences=True))
-    model.add(LSTM(140, activation='linear'))  # Output layer supports negative values
+    model.add(LSTM(140, activation='tanh'))  # Output layer supports negative values
 
     # Compile the model
     model.compile(optimizer='adam', loss='mse')
@@ -134,7 +134,7 @@ def createModel(epochs, batch_size, time_steps, features, model, train_data):
     return history
 
 
-def plotReconstructed(num_heartbeat, epochs, batch_size, history, model, modelnumber):
+def plotReconstructed(num_heartbeat, epochs, batch_size, history, model, modelnumber, scaler):
     """
     Uses the created model to reconstruct a heartbeat.
 
@@ -145,15 +145,18 @@ def plotReconstructed(num_heartbeat, epochs, batch_size, history, model, modelnu
     :return: ---
     """
     # Select a single heartbeat from the input data
-    input_heartbeat = healthy_reshape[num_heartbeat]  # For example, the fifth heartbeat
+    input_heartbeat = healthy_norm[num_heartbeat].reshape(1, 140, 1)
 
-    # Get the reconstructed heartbeat from the model
-    reconstructed_heartbeat = model.predict(np.expand_dims(input_heartbeat, axis=0)).reshape(-1)
+    # Get the reconstructed heartbeat from the model and reverse scale it
+    reconstructed_heartbeat = model.predict(input_heartbeat)
+    reconstructed_heartbeat = scaler.inverse_transform(reconstructed_heartbeat)
+
+    input_heartbeat = scaler.inverse_transform(healthy_norm)
 
     # Plotting both the input and reconstructed heartbeat
     plt.figure(figsize=(10, 5))
     plt.plot(input_heartbeat.reshape(-1), label=f"Input Heartbeat {num_heartbeat}", linestyle='--', color='blue')
-    plt.plot(reconstructed_heartbeat, label=f"Reconstructed Heartbeat Model {modelnumber}", linestyle='-', color='red')
+    plt.plot(reconstructed_heartbeat[0], label=f"Reconstructed Heartbeat Model {modelnumber}", linestyle='-', color='red')
     plt.title(
         f"Comparison of Input and Reconstructed Heartbeat. Final loss is: {round(history.history['loss'][-1], 5)} \n"
         f"Epochs = {epochs}, Batch Size = {batch_size}")
@@ -239,8 +242,8 @@ features = 1
 # Reshape to fit them into the auto encoder. Second value is the timestep
 healthy_reshape = healthy_norm.reshape(healthy_norm.shape[0], time_steps, features)
 
-epochs = 1
-batch_size = 100
+epochs = 5
+batch_size = 70
 heartbeat_to_plot = 6
 
 model = Sequential()
@@ -252,4 +255,4 @@ model.save(f'model_number{modelnumber}.h5')
 document_model(modelnumber, model, epochs, batch_size, history)
 increase_modelnumber()
 
-plotReconstructed(heartbeat_to_plot, epochs, batch_size, history, model, modelnumber)
+plotReconstructed(heartbeat_to_plot, epochs, batch_size, history, model, modelnumber, scaler)
