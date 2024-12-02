@@ -10,6 +10,7 @@ import sys
 from io import StringIO
 from sklearn.metrics import mean_squared_error
 from tensorflow.keras.models import load_model
+import seaborn as sns
 
 def setupdf(file_path):
     """
@@ -235,21 +236,109 @@ def document_model(modelnumber, model, epochs, batch_size, history):
         f.write(summary_str)
 
 
-def calculate_mean(model, test_data):
+def calculate_mean_and_save(model, test_data, scaler, file_path):
     """
-    Calculates the mean mse value for the model predicting the test_data
-    :param model:
-    :param test_data:
-    :return:  mean losses and max loss
-    """
-    losses = []
-    for i in test_data:
-        input_heartbeat = i.reshape(1, 140, 1)
-        reconstructed_heartbeat = model.predict(input_heartbeat)
-        losses.append(mean_squared_error(reconstructed_heartbeat, input_heartbeat))
-    losses_np = np.array(losses)
-    return np.mean(losses_np), np.max(losses_np)
+    Calculates the mean, max, and min MSE values for the model predicting the test_data and saves the losses to a file.
 
+    :param model: The trained model for predictions.
+    :param test_data: The test data to evaluate.
+    :param scaler: The scaler used for preprocessing the data.
+    :param file_path: Path to save the losses (default: 'losses.json').
+    :return: mean loss, max loss, and min loss
+    """
+    # Scale the test data
+    test_data_scaled = scaler.fit_transform(test_data)
+
+    # Compute losses
+    losses = []
+    healthy = 0
+    non_healthy = 0
+
+    for i in test_data_scaled:
+        input_heartbeat = i.reshape(1, 140, 1)  # Assuming 140 is the length of the input data
+        reconstructed_heartbeat = model.predict(input_heartbeat)
+        mse = mean_squared_error(reconstructed_heartbeat.reshape(-1), input_heartbeat.reshape(-1))
+        losses.append(mse)
+        if mse > 0.08:
+            non_healthy += 1
+        else:
+            healthy += 1
+
+    # Convert losses to numpy array
+    #losses_np = np.array(losses)
+
+    # Calculate mean, max, and min losses
+    #mean_loss = np.mean(losses_np)
+    #max_loss = np.max(losses_np)
+    #min_loss = np.min(losses_np)
+
+    # Save losses to a file in JSON format
+    #with open(file_path, "w") as file:
+    #    json.dump({"mean_loss": mean_loss, "max_loss": max_loss, "min_loss": min_loss, "all_losses": losses}, file)
+    # mean_loss, max_loss, min_loss ADD THIS LINE INTO THE RETURN TO RETURN MEAN AND MAX LOSS
+    return healthy, non_healthy
+
+
+def calculate_confusion_matrix(data):
+    """
+    Calculate the confusion matrix and metrics based on the input data.
+
+    Parameters:
+        data (list of lists): Each sublist contains two values:
+                              [classified_as_healthy, classified_as_non_healthy].
+                              The first sublist corresponds to healthy heartbeats,
+                              and the others correspond to unhealthy heartbeats.
+
+    Returns:
+        confusion_matrix (np.ndarray): The calculated confusion matrix as a 2x2 array.
+        metrics (dict): A dictionary with accuracy, precision, recall, and F1-score.
+    """
+    # Calculate True Positives (TP) and False Negatives (FN) from healthy heartbeats
+    TP, FN = data[0]
+
+    # Calculate False Positives (FP) and True Negatives (TN) from unhealthy heartbeats
+    FP = sum(row[0] for row in data[1:])  # Sum of "classified_as_healthy" for all unhealthy types
+    TN = sum(row[1] for row in data[1:])  # Sum of "classified_as_non_healthy" for all unhealthy types
+
+    # Confusion matrix
+    confusion_matrix = np.array([[TP, FN], [FP, TN]])
+
+    # Metrics
+    total = TP + TN + FP + FN
+    accuracy = (TP + TN) / total if total > 0 else 0
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    metrics = {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1_score
+    }
+
+    return confusion_matrix, metrics
+
+
+def plot_confusion_matrix(confusion_matrix):
+    """
+    Plot the confusion matrix using a heatmap.
+
+    Parameters:
+        confusion_matrix (np.ndarray): A 2x2 confusion matrix.
+    """
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(confusion_matrix, annot=True, fmt="d", cmap="Blues", cbar=False,
+                xticklabels=["Predicted Healthy", "Predicted Non-Healthy"],
+                yticklabels=["Actual Healthy", "Actual Non-Healthy"])
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted Label")
+    plt.ylabel("Actual Label")
+    plt.tight_layout()
+
+    # Save the plot as an image
+    plt.savefig("confusion_matrix.png", dpi=300)  # High-resolution for publications
+    plt.show()
 
 train_df = setupdf("ECG5000_TRAIN.txt")
 test_df = setupdf("ECG5000_TEST.txt")
@@ -267,23 +356,24 @@ combineddf = pd.concat([train_df, test_df], axis=0, ignore_index=True)
 healthy_train = healthy_df.iloc[583:, 1:].values
 healthy_test = healthy_df.iloc[:582, 1:].values
 
-# scaling values to be between 0 and 1
+# scaling values to be between -1 and 1
 scaler = MinMaxScaler(feature_range=(-1, 1))
 healthy_norm = scaler.fit_transform(healthy_train)
 
+# time steps is the window size that's being used for the model to train on the heartbeat
 time_steps = 140
 features = 1
 
 # Reshape to fit them into the auto encoder. Second value is the timestep
 healthy_reshape = healthy_norm.reshape(healthy_norm.shape[0], time_steps, features)
 
-epochs = 5
-batch_size = 70
-heartbeat_to_plot = 6
-
 create_model = False
 
+# creates model with settings described below
 if create_model:
+    epochs = 5
+    batch_size = 70
+    heartbeat_to_plot = 6
     model = Sequential()
     history = createModel(epochs, batch_size, time_steps, features, model, healthy_reshape)
     modelnumber = get_current_modelnumber()
@@ -294,9 +384,22 @@ if create_model:
 else:
     model = load_model("model_number1.h5")
 
-print(calculate_mean(model, healthy_test))
+# calculates mean, max and min value of a model which is specified below on the test set
+calculate_mean = True
 
+labels = []
 
+if calculate_mean:
+    label_healthy, label_unhealthy = (calculate_mean_and_save(model, healthy_test, scaler, "0.8threshold_healthy.json"))
+    labels.append([label_healthy, label_unhealthy])
+    losses_names = ["0.8threshold_arrhythmia.json", "0.8threshold_prematureV.json", "0.8threshold_prematureA.json", "0.8threshold_other.json"]
+    j = 0
+    for i in [arrhythmia_df, prematureV_df, prematureA_df, other_df]:
+        label_healthy, label_unhealthy = calculate_mean_and_save(model, i.iloc[:, 1:].values, scaler, losses_names[j])
+        labels.append([label_healthy, label_unhealthy])
+        j += 1
 
+conf_matrix, metrics = calculate_confusion_matrix(labels)
 
-
+print(metrics)
+#plot_confusion_matrix(conf_matrix)
