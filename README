@@ -1,3 +1,5 @@
 Code can be run immediatelly after downloading the project. 
-To create a new model set create_model in line 377 to TRUE, as is, the code is designed to load an optimal model which was trained in the past which is also part of the project named "model_number1.h5"
-To calculate metrics namely min mean and max error on the test test, set calculate_mean in line 394 to TRUE, it then also uses the threhold that was set and creates the confusion matrix
+To create a new model set create_model in line 377 to TRUE, as is, the code is designed to load an optimal model which was trained in the past which is also part of the project
+named "model_number1.h5"
+To calculate metrics namely min mean and max error on the test test, set calculate_mean in line 394 to TRUE, it then also uses the threhold that was set and creates the confusion
+matrix
