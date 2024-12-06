@@ -236,7 +236,7 @@ def document_model(modelnumber, model, epochs, batch_size, history):
         f.write(summary_str)
 
 
-def calculate_mean_and_save(model, test_data, scaler, file_path):
+def calculate_mean_and_save(model, test_data, scaler, file_path, threshold):
     """
     Calculates the mean, max, and min MSE values for the model predicting the test_data and saves the losses to a file.
 
@@ -244,6 +244,7 @@ def calculate_mean_and_save(model, test_data, scaler, file_path):
     :param test_data: The test data to evaluate.
     :param scaler: The scaler used for preprocessing the data.
     :param file_path: Path to save the losses (default: 'losses.json').
+    :param threshold: loss threshold that decides if heartbeat is healthy or not
     :return: mean loss, max loss, and min loss
     """
     # Scale the test data
@@ -259,23 +260,23 @@ def calculate_mean_and_save(model, test_data, scaler, file_path):
         reconstructed_heartbeat = model.predict(input_heartbeat)
         mse = mean_squared_error(reconstructed_heartbeat.reshape(-1), input_heartbeat.reshape(-1))
         losses.append(mse)
-        if mse > 0.08:
+        if mse > threshold:
             non_healthy += 1
         else:
             healthy += 1
 
-    # Convert losses to numpy array
-    #losses_np = np.array(losses)
+    # # Convert losses to numpy array
+    # losses_np = np.array(losses)
+    #
+    # # Calculate mean, max, and min losses
+    # mean_loss = np.mean(losses_np)
+    # max_loss = np.max(losses_np)
+    # min_loss = np.min(losses_np)
 
-    # Calculate mean, max, and min losses
-    #mean_loss = np.mean(losses_np)
-    #max_loss = np.max(losses_np)
-    #min_loss = np.min(losses_np)
-
-    # Save losses to a file in JSON format
-    #with open(file_path, "w") as file:
+    # # Save losses to a file in JSON format
+    # with open(file_path, "w") as file:
     #    json.dump({"mean_loss": mean_loss, "max_loss": max_loss, "min_loss": min_loss, "all_losses": losses}, file)
-    # mean_loss, max_loss, min_loss ADD THIS LINE INTO THE RETURN TO RETURN MEAN AND MAX LOSS
+#    mean_loss, max_loss, min_loss ADD THIS LINE INTO THE RETURN TO RETURN MEAN AND MAX LOSS
     return healthy, non_healthy
 
 
@@ -387,19 +388,17 @@ else:
 # calculates mean, max and min value of a model which is specified below on the test set
 calculate_mean = True
 
+threshold = 0.075
 labels = []
 
 if calculate_mean:
-    label_healthy, label_unhealthy = (calculate_mean_and_save(model, healthy_test, scaler, "0.8threshold_healthy.json"))
+    label_healthy, label_unhealthy = (calculate_mean_and_save(model, healthy_test, scaler, f"{threshold}threshold_healthy.json", threshold))
     labels.append([label_healthy, label_unhealthy])
-    losses_names = ["0.8threshold_arrhythmia.json", "0.8threshold_prematureV.json", "0.8threshold_prematureA.json", "0.8threshold_other.json"]
+    losses_names = [f"{threshold}threshold_arrhythmia.json", f"{threshold}threshold_prematureV.json", f"{threshold}threshold_prematureA.json", f"{threshold}threshold_other.json"]
     j = 0
     for i in [arrhythmia_df, prematureV_df, prematureA_df, other_df]:
-        label_healthy, label_unhealthy = calculate_mean_and_save(model, i.iloc[:, 1:].values, scaler, losses_names[j])
+        label_healthy, label_unhealthy = calculate_mean_and_save(model, i.iloc[:, 1:].values, scaler, losses_names[j], threshold)
         labels.append([label_healthy, label_unhealthy])
         j += 1
 
 conf_matrix, metrics = calculate_confusion_matrix(labels)
-
-print(metrics)
-#plot_confusion_matrix(conf_matrix)
