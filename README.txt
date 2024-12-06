@@ -1,6 +1,3 @@
-Here’s an improved and readable version of your README file in English:
-
-```markdown
 # Project Instructions
 
 ## Running the Code
@@ -13,4 +10,3 @@ By default, the code is designed to load a pre-trained, optimal model named `mod
 ## Calculating Metrics
 To calculate metrics (minimum, mean, and maximum error) on the test dataset, set `calculate_mean` to `TRUE` in **line 394**.  
 This will also apply the defined threshold and generate the confusion matrix.
-```
