@@ -371,9 +371,9 @@ features = 1
 # Reshape to fit them into the auto encoder. Second value is the timestep
 healthy_reshape = healthy_norm.reshape(healthy_norm.shape[0], time_steps, features)
 
+# creates model with settings described below if set to true otherwise it loads a model
 create_model = False
 
-# creates model with settings described below
 if create_model:
     epochs = 5
     batch_size = 70
@@ -388,7 +388,7 @@ if create_model:
 else:
     model = load_model("model_number1.h5")
 
-# calculates mean, max and min value of a model which is specified below on the test set
+# calculates mean, max and min value for all heartbeats which are not the training data using the selected model
 calculate_mean = True
 
 threshold = 0.075
