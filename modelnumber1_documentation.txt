@@ -1,0 +1,24 @@
+Training: Epochs = 5, Batch size = 70, 
+Result: Loss = 0.02001 
+Model Summary:
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ lstm (LSTM)                 (None, 140, 64)           16896     
+                                                                 
+ lstm_1 (LSTM)               (None, 140, 32)           12416     
+                                                                 
+ lstm_2 (LSTM)               (None, 140, 10)           1720      
+                                                                 
+ lstm_3 (LSTM)               (None, 140, 32)           5504      
+                                                                 
+ lstm_4 (LSTM)               (None, 140, 64)           24832     
+                                                                 
+ lstm_5 (LSTM)               (None, 140)               114800    
+                                                                 
+=================================================================
+Total params: 176,168
+Trainable params: 176,168
+Non-trainable params: 0
+_________________________________________________________________

@@ -198,13 +198,16 @@ def get_current_modelnumber():
 def increase_modelnumber():
     """
     Opens the modelnumber file and increases its value by one.
+    If the file doesn't exist, it creates one with an initial value of 1.
     :return: ---
     """
-    value = 0
-    with open('modelnumber.txt', 'r') as f:
-        value = int(f.read())
+    try:
+        with open("modelnumber.txt", 'r') as f:
+            value = int(f.read())
+    except FileNotFoundError:
+        value = 0
     value += 1
-    with open('modelnumber.txt', 'w') as f:
+    with open("modelnumber.txt", 'w') as f:
         f.write(str(value))
 
 
